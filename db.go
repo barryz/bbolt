@@ -6,6 +6,7 @@ import (
 	"hash/fnv"
 	"log"
 	"os"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"sync"
@@ -180,6 +181,20 @@ func Open(path string, mode os.FileMode, options *Options) (*DB, error) {
 	if options.ReadOnly {
 		flag = os.O_RDONLY
 		db.readOnly = true
+	}
+
+	// make sure the directories in the path must exist
+	dir, _ := filepath.Split(path)
+	if dir != "" {
+		if fi, err := os.Stat(dir); err == nil {
+			if !fi.IsDir() {
+				return nil, fmt.Errorf("open %s: not a directory", dir)
+			}
+		} else if os.IsNotExist(err) {
+			if err := os.MkdirAll(dir, 0755); err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	// Open data file and separate sync handler for metadata writes.
